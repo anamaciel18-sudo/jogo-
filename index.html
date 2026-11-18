@@ -1,1 +1,857 @@
+="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'sans-serif', cursive;
+            touch-action: manipulation;
+            user-select: none;
+        }
+        canvas {
+            display: block;
+            border-radius:<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Aventura Mágica do Unicórnio</title>
+    <script src 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        .btn-magic {
+            background: linear-gradient(135deg, #ff7eb3 0%, #ff758c 100%);
+            box-shadow: 0 6px 0px #d44161;
+            transition: all 0.1s ease;
+        }
+        .btn-magic:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0px #d44161;
+        }
+    </style>
+</head>
+<body class="bg-indigo-950 min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 text-white overflow-hidden">
 
+    <!-- Container Principal do Jogo -->
+    <div class="relative w-full max-w-3xl flex flex-col items-center">
+        <!-- Título -->
+        <h1 class="text-2xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-300 via-purple-300 to-indigo-200 mb-2 text-center drop-shadow-md">
+            ✨ Princesa & Unicórnio Mágico ✨
+        </h1>
+
+        <!-- Canvas do Jogo -->
+        <div class="relative w-full aspect-[4/3] max-h-[70vh] flex justify-center items-center">
+            <canvas id="gameCanvas" class="w-full h-full"></canvas>
+            
+            <!-- Controles Touch para Celular (Overlay) -->
+            <div id="touchControls" class="absolute bottom-4 left-0 right-0 flex justify-center gap-4 px-4 md:hidden z-10">
+                <button id="btnFly" class="btn-magic w-full py-4 rounded-2xl text-xl font-bold text-white uppercase tracking-wider active:scale-95">
+                    ✨ SUBIR (VOAR) ✨
+                </button>
+            </div>
+        </div>
+
+        <!-- Instruções Rápidas -->!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Aventura Mágica do Unicórnio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+…            background: linear-gradient(135deg, #ff7eb3 0%, #ff758c 100%);
+            box-shadow: 0 6px 0px #d44161;
+            transition: all 0.1s ease;
+        }
+        .btn-magic:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0px #d44161;
+        }
+        <div class="mt-3 text-xs sm:text-sm text-pink-200 text-center font-medium bg-purple-900/40 px-4 py-2 rounded-full border border-pink-500/30">
+            🎮 <b>Controles:</b> Tecla ESPAÇO / Seta para CIMA ou Toque na tela para voar!
+        </div>
+    </div>
+
+    <script>
+        // Inicialização do Canvas e Contexto
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const btnFly = document.getElementById('btnFly');
+
+        // Ajuste de Resolução Interna do Canvas
+        function resizeCanvas() {
+            canvas.width = 800;
+            canvas.height = 600;
+        }
+        resizeCanvas();
+
+        // Estados do Jogo: 'START', 'PLAYING', 'GAMEOVER', 'VICTORY'
+        let gameState = 'START';
+        let score = 0;
+        let highScore = 0;
+        let frameCount = 0;
+
+        // Configuração das 3 Fases do Jogo
+        let currentLevel = 1;
+        let levelBannerTimer = 0;
+        let levelBannerText = "";
+        let levelBannerSubtext = "";
+
+        const LEVELS = {
+            1: {
+                name: "Fase 1: Céu Ensolarado",
+                shortName: "Fase 1/3",
+                goal: 10,
+                skyColors: ["#38bdf8", "#7dd3fc", "#fbcfe8"],
+                obstacleSpeed: 3.4,
+                obstacleInterval: 115,
+                starSpeed: 3.2,
+                starInterval: 65,
+                hasRainbow: true,
+                hasStarsBg: false
+            },
+            2: {
+                name: "Fase 2: Pôr do Sol Mágico",
+                shortName: "Fase 2/3",
+                goal: 25,
+                skyColors: ["#fb923c", "#f472b6", "#7e22ce"],
+                obstacleSpeed: 4.5,
+                obstacleInterval: 92,
+                starSpeed: 4.0,
+                starInterval: 60,
+                hasRainbow: true,
+                hasStarsBg: false
+            },
+            3: {
+                name: "Fase 3: Noite Estrelada",
+                shortName: "Fase 3/3",
+                goal: 45,
+                skyColors: ["#090d16", "#1e1b4b", "#4c1d95"],
+                obstacleSpeed: 5.7,
+                obstacleInterval: 74,
+                starSpeed: 4.8,
+                starInterval: 55,
+                hasRainbow: false,
+                hasStarsBg: true
+            }
+        };
+
+        // Estrelas fixas cintilantes para o fundo da Fase 3
+        const bgStars = Array.from({ length: 45 }, () => ({
+            x: Math.random() * 800,
+            y: Math.random() * 480,
+            size: Math.random() * 2.2 + 0.8,
+            blinkOffset: Math.random() * Math.PI * 2
+        }));
+
+        // Propriedades do Jogador (Princesa + Unicórnio)
+        const player = {
+            x: 100,
+            y: 250,
+            width: 70,
+            height: 60,
+            gravity: 0.45,
+            lift: -8.5,
+            velocity: 0,
+            reset: function() {
+                this.y = 250;
+                this.velocity = 0;
+            },
+            update: function() {
+                this.velocity += this.gravity;
+                this.y += this.velocity;
+
+                // Limites da tela
+                if (this.y + this.height > canvas.height - 30) {
+                    this.y = canvas.height - 30 - this.height;
+                    this.velocity = 0;
+                }
+                if (this.y < 10) {
+                    this.y = 10;
+                    this.velocity = 0;
+                }
+            },
+            fly: function() {
+                this.velocity = this.lift;
+                createParticles(this.x, this.y + this.height / 2, '#ff9a9e', 5);
+            }
+        };
+
+        // Listas de Objetos do Jogo
+        let clouds = [];       // Nuvens decorativas de fundo
+        let obstacles = [];   // Nuvens de tempestade (obstáculos)
+        let collectibles = [];// Estrelas coletáveis
+        let particles = [];   // Efeitos de brilhos
+
+        // Desenhar Unicórnio com a Princesa em SVG/Canvas
+        function drawPlayer(x, y) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Animação leve de inclinação ao subir/descer
+            let angle = Math.min(Math.max(player.velocity * 0.05, -0.4), 0.4);
+            ctx.rotate(angle);
+
+            // CORPO DO UNICÓRNIO
+            ctx.fillStyle = "#FFFFFF";
+            ctx.beginPath();
+            ctx.ellipse(35, 35, 25, 18, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // CABEÇA DO UNICÓRNIO
+            ctx.beginPath();
+            ctx.ellipse(52, 22, 12, 10, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // PESCOÇO
+            ctx.beginPath();
+            ctx.moveTo(38, 30);
+            ctx.lineTo(48, 16);
+            ctx.lineTo(55, 26);
+            ctx.lineTo(42, 38);
+            ctx.fill();
+
+            // CRINA MÁGICA (Colorida)
+            const colors = ['#ff7ea5', '#ffda79', '#7efaff', '#b37eff'];
+            for(let i = 0; i < colors.length; i++) {
+                ctx.fillStyle = colors[i];
+                ctx.beginPath();
+                ctx.arc(32 + (i*4), 16 + (i*3), 6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // CHIFRE MÁGICO (Dourado com brilho)
+            ctx.fillStyle = "#FFEAA7";
+            ctx.strokeStyle = "#FDCB6E";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(56, 15);
+            ctx.lineTo(68, 4);
+            ctx.lineTo(60, 18);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // ASAS MÁGICAS
+            ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+            ctx.beginPath();
+            let wingFlap = Math.sin(frameCount * 0.2) * 8;
+            ctx.ellipse(30, 20, 14, 8 + wingFlap/2, -0.6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // OLHO DO UNICÓRNIO
+            ctx.fillStyle = "#2d3436";
+            ctx.beginPath();
+            ctx.arc(56, 20, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // CORPO DA PRINCESA
+            // Vestido
+            ctx.fillStyle = "#fd79a8";
+            ctx.beginPath();
+            ctx.moveTo(25, 28);
+            ctx.lineTo(15, 42);
+            ctx.lineTo(35, 42);
+            ctx.closePath();
+            ctx.fill();
+
+            // Cabeça da Princesa
+            ctx.fillStyle = "#ffeaa7"; // tom de pele
+            ctx.beginPath();
+            ctx.arc(25, 20, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Cabelo Loiro/Brilhante
+            ctx.fillStyle = "#fdcb6e";
+            ctx.beginPath();
+            ctx.arc(23, 18, 8, 0.5, Math.PI * 1.8);
+            ctx.fill();
+
+            // COROA DA PRINCESA
+            ctx.fillStyle = "#ffeaa7";
+            ctx.beginPath();
+            ctx.moveTo(21, 13);
+            ctx.lineTo(23, 8);
+            ctx.lineTo(25, 12);
+            ctx.lineTo(27, 8);
+            ctx.lineTo(29, 13);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // Criar Partículas (Brilhos mágicos)
+        function createParticles(x, y, color, count = 3) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 3 - 2,
+                    vy: (Math.random() - 0.5) * 3,
+                    size: Math.random() * 4 + 2,
+                    color: color,
+                    life: 30
+                });
+            }
+        }
+
+        // Atualizar e Desenhar Partículas
+        function handleParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        // Gerenciar Nuvens Decorativas de Fundo
+        function handleBackgroundClouds() {
+            if (frameCount % 85 === 0) {
+                clouds.push({
+                    x: canvas.width + 60,
+                    y: Math.random() * (canvas.height - 150),
+                    size: Math.random() * 30 + 40,
+                    speed: Math.random() * 1 + 0.6
+                });
+            }
+
+            // Cor das nuvens se adapta levemente ao horário do dia (fase)
+            let cloudColor = "rgba(255, 255, 255, 0.55)";
+            if (currentLevel === 2) cloudColor = "rgba(255, 224, 210, 0.45)";
+            if (currentLevel === 3) cloudColor = "rgba(165, 180, 252, 0.22)";
+
+            for (let i = clouds.length - 1; i >= 0; i--) {
+                let c = clouds[i];
+                c.x -= c.speed;
+
+                ctx.fillStyle = cloudColor;
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2);
+                ctx.arc(c.x + c.size * 0.5, c.y - c.size * 0.2, c.size * 0.7, 0, Math.PI * 2);
+                ctx.arc(c.x - c.size * 0.5, c.y - c.size * 0.2, c.size * 0.7, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (c.x < -100) clouds.splice(i, 1);
+            }
+        }
+
+        // Gerenciar Obstáculos (Nuvens de Tempestade com Raios)
+        function handleObstacles() {
+            const cfg = LEVELS[currentLevel];
+
+            // Criar novas nuvens escuras de acordo com o intervalo da fase atual
+            if (frameCount % cfg.obstacleInterval === 0) {
+                let heightPos = Math.random() * (canvas.height - 190) + 55;
+                obstacles.push({
+                    x: canvas.width + 60,
+                    y: heightPos,
+                    radius: currentLevel === 3 ? 41 : 37,
+                    speed: cfg.obstacleSpeed,
+                    hasLightning: currentLevel === 3 ? true : Math.random() > 0.3
+                });
+            }
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                let obs = obstacles[i];
+                obs.x -= obs.speed;
+
+                // Desenhar Nuvem Escura (mais sombria na Fase 3)
+                ctx.fillStyle = currentLevel === 3 ? "#2b2d42" : "#4a4e69";
+                ctx.beginPath();
+                ctx.arc(obs.x, obs.y, obs.radius, 0, Math.PI * 2);
+                ctx.arc(obs.x - 20, obs.y + 5, obs.radius * 0.75, 0, Math.PI * 2);
+                ctx.arc(obs.x + 20, obs.y + 5, obs.radius * 0.75, 0, Math.PI * 2);
+                ctx.arc(obs.x, obs.y - 15, obs.radius * 0.8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Desenhar Raios Saindo da Nuvem (mais intensos na Fase 3)
+                const lightningActive = currentLevel === 3 ? (frameCount % 14 < 9) : (obs.hasLightning && frameCount % 20 < 10);
+                if (lightningActive) {
+                    ctx.strokeStyle = currentLevel === 3 ? "#fde047" : "#f39c12";
+                    ctx.lineWidth = currentLevel === 3 ? 4 : 3;
+                    ctx.beginPath();
+                    ctx.moveTo(obs.x, obs.y + 20);
+                    ctx.lineTo(obs.x - 9, obs.y + 42);
+                    ctx.lineTo(obs.x + 5, obs.y + 47);
+                    ctx.lineTo(obs.x - 6, obs.y + 70);
+                    ctx.stroke();
+                }
+
+                // Verificação de Colisão simples (Círculo vs Caixa do Jogador)
+                let distX = Math.abs(obs.x - (player.x + player.width / 2));
+                let distY = Math.abs(obs.y - (player.y + player.height / 2));
+
+                if (distX < (player.width / 2 + obs.radius * 0.68) && distY < (player.height / 2 + obs.radius * 0.68)) {
+                    triggerGameOver();
+                }
+
+                // Remover se sair da tela e dar +1 ponto por desviar com sucesso
+                if (obs.x < -80) {
+                    obstacles.splice(i, 1);
+                    addScore(1);
+                }
+            }
+        }
+
+        // Gerenciar Estrelas Mágicas Coletáveis
+        function handleCollectibles() {
+            const cfg = LEVELS[currentLevel];
+
+            if (frameCount % cfg.starInterval === 0) {
+                collectibles.push({
+                    x: canvas.width + 40,
+                    y: Math.random() * (canvas.height - 180) + 45,
+                    size: 16,
+                    speed: cfg.starSpeed
+                });
+            }
+
+            for (let i = collectibles.length - 1; i >= 0; i--) {
+                let star = collectibles[i];
+                star.x -= star.speed;
+
+                // Desenhar Estrela Amarela Brilhante
+                ctx.save();
+                ctx.translate(star.x, star.y);
+                ctx.rotate(Math.sin(frameCount * 0.08 + i) * 0.2);
+                ctx.fillStyle = "#fde047";
+                ctx.strokeStyle = "#f59e0b";
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                for (let j = 0; j < 5; j++) {
+                    ctx.lineTo(Math.cos((18 + j * 72) * Math.PI / 180) * star.size,
+                               -Math.sin((18 + j * 72) * Math.PI / 180) * star.size);
+                    ctx.lineTo(Math.cos((54 + j * 72) * Math.PI / 180) * (star.size / 2),
+                               -Math.sin((54 + j * 72) * Math.PI / 180) * (star.size / 2));
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+
+                // Checar Colisão com o Jogador (Coleta vale +2 pontos)
+                let distX = Math.abs(star.x - (player.x + player.width / 2));
+                let distY = Math.abs(star.y - (player.y + player.height / 2));
+
+                if (distX < (player.width / 2 + star.size) && distY < (player.height / 2 + star.size)) {
+                    createParticles(star.x, star.y, '#fde047', 12);
+                    collectibles.splice(i, 1);
+                    addScore(2);
+                } else if (star.x < -30) {
+                    collectibles.splice(i, 1);
+                }
+            }
+        }
+
+        // Adicionar Pontos e Verificar Progressão de Fases / Vitória
+        function addScore(points) {
+            if (gameState !== 'PLAYING') return;
+
+            score += points;
+            if (score > highScore) {
+                highScore = score;
+            }
+
+            // Verifica transição de fase conforme as metas (10, 25 e 45)
+            if (currentLevel === 1 && score >= LEVELS[1].goal) {
+                advanceToLevel(2);
+            } else if (currentLevel === 2 && score >= LEVELS[2].goal) {
+                advanceToLevel(3);
+            } else if (currentLevel === 3 && score >= LEVELS[3].goal) {
+                triggerVictory();
+            }
+        }
+
+        // Avançar para a próxima fase com efeito visual
+        function advanceToLevel(nextLevel) {
+            currentLevel = nextLevel;
+            levelBannerText = LEVELS[nextLevel].name + "!";
+            levelBannerSubtext = `Nova Meta: ${LEVELS[nextLevel].goal} pontos`;
+            levelBannerTimer = 150; // Exibe o banner por ~2.5 segundos
+
+            // Limpa obstáculos muito próximos para uma transição justa e cria explosão de brilhos
+            obstacles = obstacles.filter(obs => obs.x > canvas.width * 0.65);
+            const burstColors = ['#ff7ea5', '#fde047', '#7efaff', '#d8b4fe'];
+            for (let i = 0; i < 24; i++) {
+                createParticles(
+                    player.x + 35,
+                    player.y + 30,
+                    burstColors[i % burstColors.length],
+                    1
+                );
+            }
+        }
+
+        // Desenhar o Céu Dinâmico da Fase Atual (Sol, Pôr do Sol ou Noite Estrelada)
+        function drawSkyBackground() {
+            const cfg = LEVELS[currentLevel];
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            skyGrad.addColorStop(0, cfg.skyColors[0]);
+            skyGrad.addColorStop(0.55, cfg.skyColors[1]);
+            skyGrad.addColorStop(1, cfg.skyColors[2]);
+
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Elementos específicos de cada fase
+            if (currentLevel === 1) {
+                // Sol brilhante e amigável na Fase 1
+                ctx.save();
+                ctx.fillStyle = "rgba(254, 240, 138, 0.35)";
+                ctx.beginPath();
+                ctx.arc(690, 95, 58, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = "#fde047";
+                ctx.beginPath();
+                ctx.arc(690, 95, 38, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            } else if (currentLevel === 2) {
+                // Sol grande de pôr do sol no horizonte na Fase 2
+                ctx.save();
+                ctx.fillStyle = "rgba(253, 224, 71, 0.45)";
+                ctx.beginPath();
+                ctx.arc(620, 440, 95, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            } else if (currentLevel === 3) {
+                // Estrelas cintilantes e Lua Cheia na Fase 3
+                ctx.save();
+                bgStars.forEach(st => {
+                    const alpha = 0.4 + Math.abs(Math.sin(frameCount * 0.05 + st.blinkOffset)) * 0.6;
+                    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(st.x, st.y, st.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                // Lua Cheia Mágica
+                ctx.fillStyle = "rgba(254, 249, 195, 0.22)";
+                ctx.beginPath();
+                ctx.arc(680, 100, 62, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = "#fef9c3";
+                ctx.beginPath();
+                ctx.arc(680, 100, 40, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Pequenas crateras suaves na lua
+                ctx.fillStyle = "rgba(202, 138, 4, 0.18)";
+                ctx.beginPath();
+                ctx.arc(668, 92, 8, 0, Math.PI * 2);
+                ctx.arc(692, 108, 6, 0, Math.PI * 2);
+                ctx.arc(675, 114, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Desenhar Arco-Íris Decorativo no Fundo
+        function drawRainbow() {
+            if (!LEVELS[currentLevel].hasRainbow) return;
+
+            ctx.save();
+            ctx.globalAlpha = currentLevel === 1 ? 0.85 : 0.45;
+            ctx.lineWidth = 6;
+            const rainbowColors = ['#ff7ea5', '#ff9f43', '#feca57', '#1dd1a1', '#48dbfb', '#9c88ff'];
+            for (let i = 0; i < rainbowColors.length; i++) {
+                ctx.strokeStyle = rainbowColors[i];
+                ctx.beginPath();
+                ctx.arc(canvas.width / 2, canvas.height + 120 - (i * 6), 350, Math.PI, 0, false);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        // Vitória ao completar a Fase 3
+        function triggerVictory() {
+            gameState = 'VICTORY';
+            if (score > highScore) {
+                highScore = score;
+            }
+        }
+
+        // Fim de Jogo
+        function triggerGameOver() {
+            gameState = 'GAMEOVER';
+            if (score > highScore) {
+                highScore = score;
+            }
+        }
+
+        // Reiniciar Jogo
+        function resetGame() {
+            player.reset();
+            obstacles = [];
+            collectibles = [];
+            particles = [];
+            score = 0;
+            currentLevel = 1;
+            frameCount = 0;
+            levelBannerText = LEVELS[1].name + "!";
+            levelBannerSubtext = `Meta: ${LEVELS[1].goal} pontos`;
+            levelBannerTimer = 120;
+            gameState = 'PLAYING';
+        }
+
+        // Desenhar Interface de Usuário (HUD com Fase Atual, Pontos e Meta)
+        function drawUI() {
+            const cfg = LEVELS[currentLevel];
+
+            // Barra superior translúcida do HUD
+            ctx.save();
+            ctx.fillStyle = "rgba(15, 23, 42, 0.35)";
+            ctx.beginPath();
+            ctx.roundRect(14, 12, canvas.width - 28, 46, 14);
+            ctx.fill();
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 19px 'Comic Sans MS', sans-serif";
+            ctx.shadowColor = "rgba(0,0,0,0.45)";
+            ctx.shadowBlur = 4;
+
+            // Esquerda: Fase Atual
+            ctx.textAlign = "left";
+            ctx.fillText(`🌈 ${cfg.shortName}`, 28, 42);
+
+            // Centro: Pontuação e Meta da Fase
+            ctx.textAlign = "center";
+            ctx.fillText(`⭐ Pontos: ${score} / ${cfg.goal}`, canvas.width / 2, 42);
+
+            // Direita: Recorde
+            ctx.textAlign = "right";
+            ctx.fillText(`🏆 Recorde: ${highScore}`, canvas.width - 28, 42);
+            ctx.restore();
+        }
+
+        // Banner Animado de Transição de Fase
+        function drawLevelBanner() {
+            if (levelBannerTimer <= 0) return;
+            levelBannerTimer--;
+
+            const alpha = levelBannerTimer < 30 ? levelBannerTimer / 30 : 1;
+            const slideY = levelBannerTimer > 130 ? (150 - levelBannerTimer) * 2 : 40;
+
+            ctx.save();
+            ctx.globalAlpha = alpha;
+
+            // Caixa do Banner
+            ctx.fillStyle = "rgba(30, 27, 75, 0.85)";
+            ctx.strokeStyle = "#f472b6";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.roundRect(canvas.width / 2 - 230, 68 + slideY * 0.3, 460, 74, 20);
+            ctx.fill();
+            ctx.stroke();
+
+            // Texto Principal da Fase
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#fde047";
+            ctx.font = "bold 24px 'Comic Sans MS', sans-serif";
+            ctx.fillText(`✨ ${levelBannerText} ✨`, canvas.width / 2, 102 + slideY * 0.3);
+
+            // Subtexto da Meta
+            ctx.fillStyle = "#fbcfe8";
+            ctx.font = "bold 16px 'Comic Sans MS', sans-serif";
+            ctx.fillText(levelBannerSubtext, canvas.width / 2, 128 + slideY * 0.3);
+
+            ctx.restore();
+        }
+
+        // Tela de Início
+        function drawStartScreen() {
+            ctx.fillStyle = "rgba(15, 23, 42, 0.45)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 36px 'Comic Sans MS', sans-serif";
+            ctx.fillText("✨ Reino Mágico dos Unicórnios ✨", canvas.width / 2, 185);
+
+            ctx.font = "19px 'Comic Sans MS', sans-serif";
+            ctx.fillStyle = "#fef08a";
+            ctx.fillText("Supere as 3 fases mágicas do céu!", canvas.width / 2, 235);
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "17px 'Comic Sans MS', sans-serif";
+            ctx.fillText("☀️ Fase 1: Céu Ensolarado (Meta: 10 pts)", canvas.width / 2, 275);
+            ctx.fillText("🌅 Fase 2: Pôr do Sol Mágico (Meta: 25 pts)", canvas.width / 2, 305);
+            ctx.fillText("🌙 Fase 3: Noite Estrelada (Meta: 45 pts)", canvas.width / 2, 335);
+
+            // Botão Iniciar Simulado
+            ctx.fillStyle = "#ff7ea5";
+            ctx.beginPath();
+            ctx.roundRect(canvas.width / 2 - 120, 375, 240, 60, 16);
+            ctx.fill();
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 23px 'Comic Sans MS', sans-serif";
+            ctx.fillText("CLIQUE p/ JOGAR", canvas.width / 2, 413);
+            ctx.textAlign = "left";
+        }
+
+        // Tela de Vitória (Ao completar a Fase 3)
+        function drawVictoryScreen() {
+            // Gera confetes e brilhos continuamente na vitória
+            if (frameCount % 6 === 0) {
+                const confettiColors = ['#ff7ea5', '#fde047', '#7efaff', '#c084fc', '#4ade80'];
+                createParticles(
+                    Math.random() * canvas.width,
+                    Math.random() * (canvas.height * 0.6),
+                    confettiColors[Math.floor(Math.random() * confettiColors.length)],
+                    3
+                );
+            }
+
+            ctx.fillStyle = "rgba(15, 23, 42, 0.55)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#fde047";
+            ctx.font = "bold 42px 'Comic Sans MS', sans-serif";
+            ctx.fillText("👑 VITÓRIA MÁGICA! 🦄", canvas.width / 2, 185);
+
+            ctx.fillStyle = "#fbcfe8";
+            ctx.font = "bold 22px 'Comic Sans MS', sans-serif";
+            ctx.fillText("Você completou todas as 3 fases do céu!", canvas.width / 2, 235);
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 24px 'Comic Sans MS', sans-serif";
+            ctx.fillText(`⭐ Pontuação Final: ${score}`, canvas.width / 2, 285);
+            ctx.fillText(`🏆 Recorde: ${highScore}`, canvas.width / 2, 322);
+
+            // Botão Jogar Novamente
+            ctx.fillStyle = "#ec4899";
+            ctx.beginPath();
+            ctx.roundRect(canvas.width / 2 - 130, 365, 260, 62, 16);
+            ctx.fill();
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 22px 'Comic Sans MS', sans-serif";
+            ctx.fillText("JOGAR NOVAMENTE", canvas.width / 2, 404);
+            ctx.textAlign = "left";
+        }
+
+        // Tela de Game Over
+        function drawGameOverScreen() {
+            ctx.fillStyle = "rgba(15, 23, 42, 0.55)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#ff7ea5";
+            ctx.font = "bold 42px 'Comic Sans MS', sans-serif";
+            ctx.fillText("Ops! Fim de Jogo 🌩️", canvas.width / 2, 185);
+
+            ctx.fillStyle = "#fde047";
+            ctx.font = "bold 20px 'Comic Sans MS', sans-serif";
+            ctx.fillText(`Você chegou até a ${LEVELS[currentLevel].name}`, canvas.width / 2, 230);
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 24px 'Comic Sans MS', sans-serif";
+            ctx.fillText(`⭐ Sua Pontuação: ${score}`, canvas.width / 2, 275);
+            ctx.fillText(`🏆 Melhor Pontuação: ${highScore}`, canvas.width / 2, 312);
+
+            // Botão Recomeçar
+            ctx.fillStyle = "#38bdf8";
+            ctx.beginPath();
+            ctx.roundRect(canvas.width / 2 - 130, 360, 260, 60, 16);
+            ctx.fill();
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 22px 'Comic Sans MS', sans-serif";
+            ctx.fillText("JOGAR NOVAMENTE", canvas.width / 2, 398);
+            ctx.textAlign = "left";
+        }
+
+        // Loop Principal do Jogo (Animation Loop)
+        function gameLoop() {
+            // Limpar Canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Desenhar Cenário Dinâmico da Fase
+            drawSkyBackground();
+            drawRainbow();
+            handleBackgroundClouds();
+
+            if (gameState === 'PLAYING') {
+                frameCount++;
+
+                // Atualizar e desenhar elementos do jogo
+                player.update();
+                handleObstacles();
+                handleCollectibles();
+                handleParticles();
+
+                // Desenhar personagem
+                drawPlayer(player.x, player.y);
+
+                // Interface de Pontuação e Banner de Fase
+                drawUI();
+                drawLevelBanner();
+
+            } else if (gameState === 'START') {
+                drawPlayer(player.x, player.y);
+                drawStartScreen();
+            } else if (gameState === 'VICTORY') {
+                frameCount++;
+                drawPlayer(player.x, player.y);
+                drawVictoryScreen();
+                handleParticles();
+            } else if (gameState === 'GAMEOVER') {
+                handleParticles();
+                drawPlayer(player.x, player.y);
+                drawGameOverScreen();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Input & Interação (Teclado, Clique e Touch)
+        function handleAction() {
+            if (gameState === 'PLAYING') {
+                player.fly();
+            } else if (gameState === 'START' || gameState === 'GAMEOVER' || gameState === 'VICTORY') {
+                resetGame();
+            }
+        }
+
+        // Eventos de Teclado
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                handleAction();
+            }
+        });
+
+        // Evento de Clique no Canvas (Para Iniciar/Jogar no PC)
+        canvas.addEventListener('mousedown', (e) => {
+            handleAction();
+        });
+
+        // Evento do Botão Touch (Para Celulares)
+        btnFly.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleAction();
+        });
+        btnFly.addEventListener('click', (e) => {
+            handleAction();
+        });
+
+        // Iniciar o loop quando a janela carregar
+        window.onload = function() {
+            gameLoop();
+        };
+    </script>
+</body>
+</html>
